@@ -1,0 +1,7 @@
+#!/bin/sh
+
+ssh root@$2 yum install -y rpm-build rsync unzip
+rsync -Pr --exclude '*RPMS*' $1 root@$2:
+ssh root@$2 'rm -rf ~/rpmbuild/RPMS && rpmbuild -ba ~/rpmbuild/SPECS/unifi.spec'
+mkdir -p $2/RPMS
+rsync -Pr root@$2:rpmbuild/RPMS/ $1/RPMS/

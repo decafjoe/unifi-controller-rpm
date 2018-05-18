@@ -12,6 +12,8 @@ License: Proprietary
 Group: System Environment/Daemons
 URL: https://www.ubnt.com/download/unifi/
 Source0: %{name}-%{version}.zip
+Source1: unifid.init
+Source2: unifid
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 Requires: java-1.8.0-openjdk-headless
 
@@ -24,6 +26,7 @@ The only reason this package exists is for EL6 users.
 
 %prep
 %setup -q -n UniFi
+rm -f readme.txt
 rm -rf lib/native/Mac
 rm -rf lib/native/Windows
 rm -rf lib/native/Linux/armhf
@@ -35,6 +38,10 @@ rmdir conf
 mkdir -p %{buildroot}%{unifi_prefix}
 mv * %{buildroot}%{unifi_prefix}/
 mkdir -p %{buildroot}%{unifi_prefix}/{data,logs,run,work}
+mkdir -p %{buildroot}%{_initrddir}
+install -m 755 %{S:1} %{buildroot}%{_initrddir}/unifid
+mkdir -p %{buildroot}%{_bindir}
+install -m 755 %{S:2} %{buildroot}%{_bindir}/unifid
 
 %check
 echo -n "Checking installed version... "
@@ -51,7 +58,8 @@ rm -rf $RPM_BUILD_ROOT
        -MNrg %{unifi_group} -d %{unifi_prefix} -s /sbin/nologin %{unifi_user}
 
 %files
-%doc %{unifi_prefix}/readme.txt
+%attr(0755,root,root) %{_bindir}/unifid
+%attr(0755,root,root) %{_initrddir}/unifid
 %attr(0750,%{unifi_user},%{unifi_group}) %{unifi_prefix}/bin/
 %attr(0750,%{unifi_user},%{unifi_group}) %{unifi_prefix}/data/
 %attr(0750,%{unifi_user},%{unifi_group}) %{unifi_prefix}/dl/

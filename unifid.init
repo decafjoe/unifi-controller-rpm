@@ -1,0 +1,77 @@
+#!/bin/bash
+#
+#       /etc/rc.d/init.d/unifid
+#
+#       UniFi WAP, routing, and switching controller
+#
+
+. /etc/init.d/functions
+
+RETVAL=0
+PROG=unifid
+LOCKFILE=/var/lock/subsys/$PROG
+PIDFILE=/opt/unifi/run/$PROG.pid
+USER=unifi
+START_COMMAND="unifid --pidfile $PIDFILE --user $USER"
+
+WHO=127.0.0.1:8443
+PROPS=/opt/unifi/data/system.properties
+if [ -f $PROPS ]; then
+    IP=$(grep -v \# $PROPS | grep system_ip | awk -F= '{print $2}')
+    if [ "x$IP" = "x" ]; then
+        IP=127.0.0.1
+    fi
+    PORT=$(grep -v \# $PROPS | grep unifi.https.port | awk -F= '{print $2}')
+    if [ "x$PORT" = "x" ]; then
+        PORT=8443
+    fi
+    WHO="$IP:PORT"
+fi
+
+start() {
+    echo -n "Starting $PROG: "
+    daemon --check $PROG --pidfile $PIDFILE --user $USER $START_COMMAND
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        touch $LOCKFILE
+        echo
+        echo -n "Waiting for $PROG to come up: "
+        while ! openssl s_client -quiet -connect $WHO >/dev/null 2>&1; do
+            sleep 1
+        done
+        echo_success
+    fi
+    echo
+    return $RETVAL
+}
+
+stop() {
+        echo -n "Shutting down $PROG: "
+        killproc -p $PIDFILE $PROG
+        RETVAL=$?
+        [ $RETVAL -eq 0 ] && rm -f $LOCKFILE
+        echo
+        return $RETVAL
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status -p $PIDFILE $PROG
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+        echo "Usage: $PROG {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit $RETVAL

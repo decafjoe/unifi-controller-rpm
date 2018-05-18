@@ -1,0 +1,134 @@
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
+"""
+Executable for starting the UniFi controller software.
+"""
+from __future__ import print_function
+
+import argparse
+import atexit
+import os
+import pwd
+import subprocess
+import sys
+import time
+
+try:
+    from urllib2 import urlopen
+except ImportError:
+    from urllib.request import urlopen
+
+
+PREFIX_DEFAULT = '/opt/unifi'
+PIDFILE_DEFAULT = '%s/run/unifi.pid' % PREFIX_DEFAULT
+USER_DEFAULT = 'unifi'
+
+
+def main(argv=None, exit=sys.exit):
+    """Entry point for the program."""
+    if argv is None:
+        argv = sys.argv
+
+    def error(*args):
+        print(*(('\nerror:',) + args), file=sys.stderr)
+        return exit(1)
+
+    def note(*lines):
+        s, sp = '\nnote:', '\nnote: '
+        print(s + sp + sp.join(lines) + s + '\n', file=sys.stderr)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--prefix',
+        default=PREFIX_DEFAULT,
+        help='path to unifi prefix (default: %(default)s)',
+        metavar='PATH',
+    )
+    parser.add_argument(
+        '--pidfile',
+        default=PIDFILE_DEFAULT,
+        help='path to the pid file (default: %(default)s)',
+        metavar='FILE',
+    )
+    parser.add_argument(
+        '--user',
+        default=USER_DEFAULT,
+        help='user to run as (default: %(default)s)',
+    )
+    args = parser.parse_args(argv[1:])
+
+    try:
+        uid = pwd.getpwuid(int(args.user)).pw_uid
+    except (KeyError, ValueError):
+        try:
+            uid = pwd.getpwnam(args.user).pw_uid
+        except KeyError:
+            return error('unknown user:', args.user)
+
+    if uid != os.geteuid():
+        try:
+            os.setuid(uid)
+        except OSError as e:
+            fmt = 'not running as %s, failed to setuid: %s'
+            return error(fmt % (args.user, e))
+
+    if os.path.exists(args.pidfile):
+        try:
+            with open(args.pidfile) as f:
+                pid_raw = f.read().strip()
+        except Exception as e:
+            fmt = 'failed to read pidfile: %s (%s)'
+            return error(fmt % (args.pidfile, e))
+        try:
+            pid = int(pid_raw)
+        except ValueError:
+            note(
+                'pidfile exists, but could not read pid from it',
+                '(value in file was: "%s")' % pid_raw,
+                'will assume things are borked and delete pidfile',
+            )
+            os.unlink(args.pidfile)
+        else:
+            try:
+                os.kill(pid, 0)
+                return error('unifi is already running')
+            except:
+                note(
+                    'pidfile exists with pid %i' % pid,
+                    'however, pid does not appear to be running',
+                    'will assume things are borked and delete pidfile',
+                )
+                os.unlink(args.pidfile)
+
+    try:
+        pid = os.fork()
+    except OSError as e:
+        return error('failed first fork:', str(e))
+
+    if pid > 0:
+        sys.exit(0)
+
+    os.chdir(args.prefix)
+    os.setsid()
+    os.umask(0)
+
+    try:
+        pid = os.fork()
+    except OSError as e:
+        return error('failed second fork:', str(e))
+
+    if pid > 0:
+        sys.exit(0)
+
+    jar = os.path.join(args.prefix, 'lib', 'ace.jar')
+    process = subprocess.Popen(('java', '-jar', jar, 'start'))
+    with open(args.pidfile, 'wb') as f:
+        f.write(str(process.pid))
+    atexit.register(os.unlink, args.pidfile)
+    process.wait()
+
+    exit(0)
+
+
+if __name__ == '__main__':
+    main()

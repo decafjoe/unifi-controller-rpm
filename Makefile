@@ -1,5 +1,9 @@
-IP ?= IP
+# Not included in this repo!
 VERSION ?= 5.7.20
+ZIP_SRC = unifi-$(VERSION).zip
+
+# IP of the server to build on
+IP ?= IP
 
 ROOT := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
@@ -14,7 +18,6 @@ INIT_SRC = $(ROOT)/unifid.init
 INIT = $(SOURCES)/unifid.init
 SPEC_SRC = $(ROOT)/unifi.spec
 SPEC = $(SPECS)/unifi.spec
-ZIP_SRC = $(HOME)/annex/software/unifi-$(VERSION).zip
 ZIP = $(SOURCES)/unifi-$(VERSION).zip
 
 default : $(EXE) $(INIT) $(SPEC) $(ZIP)

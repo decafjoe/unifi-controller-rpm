@@ -16,6 +16,7 @@ Source1: unifid.init
 Source2: unifid
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 Requires: java-1.8.0-openjdk-headless
+Requires: python-argparse
 
 %description
 Ubiquiti UniFi wireless access point, routing, and switching controller.

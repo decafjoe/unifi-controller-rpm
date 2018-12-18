@@ -4,6 +4,10 @@
 #
 #       UniFi WAP, routing, and switching controller
 #
+# chkconfig:   - 90 10
+# description: Starts and stops UniFi WAP, routing, and switching
+#       controller
+#
 
 . /etc/init.d/functions
 

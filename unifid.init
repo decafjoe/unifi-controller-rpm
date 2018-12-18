@@ -25,7 +25,7 @@ if [ -f $PROPS ]; then
     if [ "x$PORT" = "x" ]; then
         PORT=8443
     fi
-    WHO="$IP:PORT"
+    WHO="$IP:$PORT"
 fi
 
 start() {
